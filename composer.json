@@ -1,0 +1,21 @@
+{
+    "name": "blackbes/yii2-yiisockets",
+    "description": "PHP Websockets with Yii2 integration based on Ratchet.",
+    "type": "yii2-extension",
+    "keywords": ["yii2","extension","websockets","ratchet with yii2","sockets",""],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "BlackBes",
+            "email": "vipua2222@gmail.com"
+        }
+    ],
+    "require": {
+        "yiisoft/yii2": "~2.0.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "blackbes\\yiisockets\\": ""
+        }
+    }
+}
