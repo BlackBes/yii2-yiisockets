@@ -11,11 +11,16 @@
         }
     ],
     "require": {
-        "yiisoft/yii2": "~2.0.0"
+        "yiisoft/yii2": "~2.0.14",
+        "cboden/ratchet": "^0.4.2",
+        "ratchet/pawl": "^0.3.4"
+    },
+    "extra": {
+        "bootstrap": "blackbes\\yiisockets\\Bootstrap"
     },
     "autoload": {
         "psr-4": {
-            "blackbes\\yiisockets\\": ""
+            "blackbes\\yiisockets\\": "src"
         }
     }
 }
