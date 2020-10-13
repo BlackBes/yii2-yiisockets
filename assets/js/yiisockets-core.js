@@ -132,7 +132,7 @@ class Yii2WebSockets {
 
                             $.ajax({
                                 method: "POST",
-                                url: requestTokenUrl+'/request-socket-token',
+                                url: requestTokenUrl+'request-socket-token',
                                 type: "html",
                             }).done(function (data) {
                                 if(data !== '') {
@@ -198,6 +198,7 @@ class Yii2WebSockets {
             }
         } catch (error) {
             console.log(error);
+            console.log(e.data);
         }
         //this.socket.send('{"type":"message", "text": "Im connected!"}');
     }

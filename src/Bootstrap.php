@@ -17,13 +17,13 @@ class Bootstrap implements BootstrapInterface{
         if ($app instanceof \yii\web\Application) {
             if (!$app->user->isGuest) {
                 if($app->request->isGet && !$app->request->isAjax) {
-                    $app->view->registerJs('let requestTokenUrl = "' . Url::toRoute(['/']) . '";', 2);
+                    $app->view->registerJs('let requestTokenUrl = "' . Url::toRoute(['/'], true) . '";', 2);
                     AssetsBundle::register($app->view);
                     $key = 'tokens-' . $app->user->id;
                     SocketToken::clearSocketTokens(SocketToken::SERVER_SOCKET_CACHE);
                     SocketToken::clearSocketTokens($key);
                     $new_token = SocketToken::createSocketToken($key);
-                    $auth_token =Yii::$app->user->identity->auth_key;
+                    $auth_token = Yii::$app->user->identity->auth_key;
 
                     Yii::$app->view->registerMetaTag([
                         'name'    => 'socket-token',
