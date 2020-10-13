@@ -23,7 +23,7 @@ global $groups;
  */
 class SocketServer implements MessageComponentInterface {
     public $controllers_namespace = "app\sockets\\";
-
+    public $use_connection_token = false;
     /**
      * Server constructor.
      */
@@ -45,6 +45,10 @@ class SocketServer implements MessageComponentInterface {
         $GLOBALS['groups']['clients']->attach($conn);
         //echo "New connection! ({$conn->resourceId})\n";
 
+        if(!$this->use_connection_token) {
+            $params['connect-token'] = '-';
+        }
+
         if (!empty($params['login-token']) && !empty($params['connect-token'])) {
             $login_token = $params['login-token'];
             $connect_token = $params['connect-token'];
@@ -54,7 +58,11 @@ class SocketServer implements MessageComponentInterface {
                 if (!empty($user)) {
                     Yii::$app->user->setIdentity($user);
                     $key = 'tokens-' . Yii::$app->user->id;
-                    if (SocketToken::verifySocketToken($key, $connect_token)) {
+                    $socketTokenVerification = true;
+                    if($this->use_connection_token) {
+                        $socketTokenVerification = SocketToken::verifySocketToken($key, $connect_token);
+                    }
+                    if ($socketTokenVerification) {
                         $conn->client_id = $user->id;
                         $GLOBALS['groups']['clients']->attach($conn);
 
