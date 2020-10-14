@@ -23,11 +23,15 @@ global $groups;
  */
 class SocketServer implements MessageComponentInterface {
     public $controllers_namespace = "app\sockets\\";
-    public $use_connection_token = false;
+    public $validation_function   = [];
+
     /**
      * Server constructor.
+     * @param array $validation_function Validation function credentials.
      */
-    public function __construct() {
+    public function __construct($validation_function) {
+        $this->validation_function = $validation_function;
+
         $GLOBALS['groups'] = [];
         $GLOBALS['groups']['clients'] = new \SplObjectStorage;
         $GLOBALS['groups']['_servers'] = new \SplObjectStorage;
@@ -45,53 +49,47 @@ class SocketServer implements MessageComponentInterface {
         $GLOBALS['groups']['clients']->attach($conn);
         //echo "New connection! ({$conn->resourceId})\n";
 
-        if(!$this->use_connection_token) {
-            $params['connect-token'] = '-';
-        }
+        if (!empty($params['data'])) {
+            $raw_data = urldecode($params['data']);
+            $data = json_decode($raw_data, true);
 
-        if (!empty($params['login-token']) && !empty($params['connect-token'])) {
-            $login_token = $params['login-token'];
-            $connect_token = $params['connect-token'];
-            if($login_token != 'server') {
-                $user = Users::findIdentityByAccessToken($login_token);
+            //if($login_token != 'server') {
+            if(is_array($data)) {
+                $user = call_user_func($this->validation_function, $data);
 
-                if (!empty($user)) {
+                if ($user != false) {
                     Yii::$app->user->setIdentity($user);
-                    $key = 'tokens-' . Yii::$app->user->id;
-                    $socketTokenVerification = true;
-                    if($this->use_connection_token) {
-                        $socketTokenVerification = SocketToken::verifySocketToken($key, $connect_token);
+
+                    $conn->client_id = $user->id;
+                    $GLOBALS['groups']['clients']->attach($conn);
+
+                    if (!isset($GLOBALS['groups']['_client_' . $user->id])) {
+                        $GLOBALS['groups']['_client_' . $user->id] = new \SplObjectStorage();
                     }
-                    if ($socketTokenVerification) {
-                        $conn->client_id = $user->id;
-                        $GLOBALS['groups']['clients']->attach($conn);
+                    if (count($GLOBALS['groups']['_client_' . $user->id]) == 0) {
+                        $GLOBALS['groups']['_client_' . $user->id]->attach($conn);
 
-                        if(!isset($GLOBALS['groups']['_client_'.$user->id])) {
-                            $GLOBALS['groups']['_client_'.$user->id] = new \SplObjectStorage();
-                        }
-                        if(count($GLOBALS['groups']['_client_'.$user->id]) == 0) {
-                            $GLOBALS['groups']['_client_'.$user->id]->attach($conn);
-
-                            $bc = new BaseController($conn, new \stdClass(), false);
-                            $bc->sendToGroupExcludeUser('im-online', ['user_id' => $user->id]);
-                        } else {
-                            $GLOBALS['groups']['_client_'.$user->id]->attach($conn);
-                        }
-                        $this->writeInfo("New connection! ({$conn->resourceId})");
+                        $bc = new BaseController($conn, new \stdClass(), false);
+                        //$bc->sendToGroupExcludeUser('im-online', ['user_id' => $user->id]);
                     } else {
-                        trigger_error('Wrong connection token.', E_USER_ERROR);
+                        $GLOBALS['groups']['_client_' . $user->id]->attach($conn);
                     }
+                    $this->writeInfo("New connection! ({$conn->resourceId})");
+
                 } else {
                     trigger_error('Wrong user login token.', E_USER_ERROR);
                 }
             } else {
+                trigger_error('Data should be a valid JSON.', E_USER_ERROR);
+            }
+            /*} else {
                 if (SocketToken::verifySocketToken(SocketToken::SERVER_SOCKET_CACHE, $connect_token)) {
                     $GLOBALS['groups']['_servers']->attach($conn);
                     $this->writeInfo("New connection from server! ({$conn->resourceId})");
                 } else {
                     trigger_error('Wrong connection token.', E_USER_ERROR);
                 }
-            }
+            }*/
         } else {
             trigger_error('Login credentials can not be empty.', E_USER_ERROR);
         }
@@ -155,22 +153,22 @@ class SocketServer implements MessageComponentInterface {
                 if (class_exists($this->controllers_namespace . $controller_name . 'Controller')) {
                     $c_name_string = $controller_name . 'Controller';
                     $controller_full_path = $this->controllers_namespace . $c_name_string;
-                    $a_name_string = 'action'.$action_name;
+                    $a_name_string = 'action' . $action_name;
                     $request_data = new \stdClass();
-                    if(isset($data->data)) {
+                    if (isset($data->data)) {
                         $request_data = $data->data;
                     }
 
                     $is_server = BaseController::isInGroup($from, '_servers');
 
                     $cont = new $controller_full_path($from, $request_data, $is_server);
-                    if(method_exists($cont, $a_name_string)) {
+                    if (method_exists($cont, $a_name_string)) {
                         $cont->$a_name_string();
                     } else {
-                        trigger_error('There is no '.$action_name.' action in '.$controller_name.' controller.', E_USER_ERROR);
+                        trigger_error('There is no ' . $action_name . ' action in ' . $controller_name . ' controller.', E_USER_ERROR);
                     }
                 } else {
-                    trigger_error('There is no '.$controller_name.' controller.', E_USER_ERROR);
+                    trigger_error('There is no ' . $controller_name . ' controller.', E_USER_ERROR);
                 }
             } else {
                 trigger_error('Action can not be empty.', E_USER_ERROR);
@@ -190,14 +188,14 @@ class SocketServer implements MessageComponentInterface {
     public function onClose(ConnectionInterface $conn) {
         foreach ($GLOBALS['groups'] as $group) {
             foreach ($group as $client) {
-                if($client == $conn) {
+                if ($client == $conn) {
                     $group->detach($client);
                 }
             }
         }
         $user_id = BaseController::getClientId($conn);
 
-        if(count($GLOBALS['groups']['_client_'.$user_id]) == 0) {
+        if (count($GLOBALS['groups']['_client_' . $user_id]) == 0) {
             $bc = new BaseController($conn, new \stdClass(), false);
             $bc->sendToGroupExcludeUser('im-offline', ['user_id' => $user_id]);
         }
@@ -215,7 +213,7 @@ class SocketServer implements MessageComponentInterface {
      * @param \Exception $e exception.
      */
     public function onError(ConnectionInterface $conn, \Exception $e) {
-        $conn->send('{"status": "2", "data": {"errorText": "'.$e->getMessage().'"}}');
+        $conn->send('{"status": "2", "data": {"errorText": "' . $e->getMessage() . '"}}');
         $this->writeError($e->getMessage());
         print_r($e->getTraceAsString());
         $conn->close();
