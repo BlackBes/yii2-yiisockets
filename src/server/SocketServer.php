@@ -31,11 +31,15 @@ class SocketServer implements MessageComponentInterface {
      */
     public function __construct($validation_function, $controllers_namespace = "app\sockets\\") {
         $this->controllers_namespace = $controllers_namespace;
+        if(is_array($validation_function)) {
         $this->validation_function = $validation_function;
 
         $GLOBALS['groups'] = [];
         $GLOBALS['groups']['clients'] = new \SplObjectStorage;
         $GLOBALS['groups']['_servers'] = new \SplObjectStorage;
+        } else {
+            trigger_error('Validation function should be a array.', E_USER_ERROR);
+        }
     }
 
     /**
