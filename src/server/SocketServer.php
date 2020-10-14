@@ -3,11 +3,10 @@
 namespace blackbes\yiisockets\server;
 
 use blackbes\yiisockets\BaseController;
-use blackbes\yiisockets\models\SocketToken;
-use app\models\Users;
 use Yii;
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
+use yii\db\Exception;
 
 global $groups;
 
@@ -22,14 +21,16 @@ global $groups;
  * @property string $controllers_namespace
  */
 class SocketServer implements MessageComponentInterface {
-    public $controllers_namespace = "app\sockets\\";
+    public $controllers_namespace = "";
     public $validation_function   = [];
 
     /**
      * Server constructor.
      * @param array $validation_function Validation function credentials.
+     * @param string $controllers_namespace Namespace of all sockets controllers. "app\sockets\" by default.
      */
-    public function __construct($validation_function) {
+    public function __construct($validation_function, $controllers_namespace = "app\sockets\\") {
+        $this->controllers_namespace = $controllers_namespace;
         $this->validation_function = $validation_function;
 
         $GLOBALS['groups'] = [];
@@ -45,6 +46,8 @@ class SocketServer implements MessageComponentInterface {
      * @param ConnectionInterface $conn user`s connection.
      */
     public function onOpen(ConnectionInterface $conn) {
+        $this->testDBConnection();
+
         $params = $this->requestGetParameters($conn);
         $GLOBALS['groups']['clients']->attach($conn);
         //echo "New connection! ({$conn->resourceId})\n";
@@ -104,6 +107,7 @@ class SocketServer implements MessageComponentInterface {
      * @param string $msg JSON raw data, that comes from client.
      */
     public function onMessage(ConnectionInterface $from, $msg) {
+        $this->testDBConnection();
         $data = json_decode($msg); //для приема сообщений в формате json
 
         if (empty($data)) {
@@ -241,6 +245,16 @@ class SocketServer implements MessageComponentInterface {
         }
 
         return $clean_parameters;
+    }
+
+    public function testDBConnection() {
+        try {
+            $result = \Yii::$app->db->createCommand("DO 1")->execute();
+        } catch (Exception $e) {
+            print_r('MySQL Has gone away. Reconnecting...');
+            \Yii::$app->db->close();
+            \Yii::$app->db->open();
+        }
     }
 
     /**
