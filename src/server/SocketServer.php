@@ -31,12 +31,12 @@ class SocketServer implements MessageComponentInterface {
      */
     public function __construct($validation_function, $controllers_namespace = "app\sockets\\") {
         $this->controllers_namespace = $controllers_namespace;
-        if(is_array($validation_function)) {
-        $this->validation_function = $validation_function;
+        if (is_array($validation_function)) {
+            $this->validation_function = $validation_function;
 
-        $GLOBALS['groups'] = [];
-        $GLOBALS['groups']['clients'] = new \SplObjectStorage;
-        $GLOBALS['groups']['_servers'] = new \SplObjectStorage;
+            $GLOBALS['groups'] = [];
+            $GLOBALS['groups']['clients'] = new \SplObjectStorage;
+            $GLOBALS['groups']['_servers'] = new \SplObjectStorage;
         } else {
             trigger_error('Validation function should be a array.', E_USER_ERROR);
         }
@@ -51,6 +51,7 @@ class SocketServer implements MessageComponentInterface {
      */
     public function onOpen(ConnectionInterface $conn) {
         $this->testDBConnection();
+        $this->callOpenCallbacks($conn);
 
         $params = $this->requestGetParameters($conn);
         $GLOBALS['groups']['clients']->attach($conn);
@@ -61,7 +62,7 @@ class SocketServer implements MessageComponentInterface {
             $data = json_decode($raw_data, true);
 
             //if($login_token != 'server') {
-            if(is_array($data)) {
+            if (is_array($data)) {
                 $user = call_user_func($this->validation_function, $data);
 
                 if ($user != false) {
@@ -194,6 +195,7 @@ class SocketServer implements MessageComponentInterface {
      * @param ConnectionInterface $conn user`s connection.
      */
     public function onClose(ConnectionInterface $conn) {
+        $this->callCloseCallbacks($conn);
         foreach ($GLOBALS['groups'] as $group) {
             foreach ($group as $client) {
                 if ($client == $conn) {
@@ -205,7 +207,7 @@ class SocketServer implements MessageComponentInterface {
 
         if (count($GLOBALS['groups']['_client_' . $user_id]) == 0) {
             $bc = new BaseController($conn, new \stdClass(), false);
-            $bc->sendToGroupExcludeUser('im-offline', ['user_id' => $user_id]);
+            //$bc->sendToGroupExcludeUser('im-offline', ['user_id' => $user_id]);
         }
 
         $this->writeInfo("Connection {$conn->resourceId} has disconnected");
@@ -251,13 +253,78 @@ class SocketServer implements MessageComponentInterface {
         return $clean_parameters;
     }
 
+    /**
+     * This function test db connection and reconnect to db if DB has gone away.
+     *
+     */
     public function testDBConnection() {
         try {
-            $result = \Yii::$app->db->createCommand("DO 1")->execute();
+            $result = \Yii::$app->db->createCommand("DO 1")
+                ->execute();
         } catch (Exception $e) {
             print_r('MySQL Has gone away. Reconnecting...');
             \Yii::$app->db->close();
             \Yii::$app->db->open();
+        }
+    }
+
+    /**
+     * This function triggers _OnOpen callbacks at all Socket controllers.
+     *
+     * @param ConnectionInterface $conn user`s connection.
+     */
+    public function callOpenCallbacks(ConnectionInterface $conn) {
+        $namespace_parts = explode('\\', $this->controllers_namespace);
+        $app_path = '';
+        foreach ($namespace_parts as $part) {
+            if (!empty($part) && $part != 'app') {
+                $app_path .= $part . "/";
+            }
+        }
+        $files = glob(\Yii::$app->basePath . '/' . $app_path . '*.php');
+        foreach ($files as $file) {
+            require_once($file);
+
+            $class = basename($file, '.php');
+
+            $class_full_name = $this->controllers_namespace . $class;
+
+            if (class_exists($class_full_name)) {
+                $obj = new $class_full_name($conn, new \stdClass(), false);
+                if(method_exists($obj, '_OnOpen')) {
+                    $obj->_OnOpen();
+                }
+            }
+        }
+    }
+
+    /**
+     * This function triggers _OnClose callbacks at all Socket controllers.
+     *
+     * @param ConnectionInterface $conn user`s connection.
+     */
+    public function callCloseCallbacks(ConnectionInterface $conn) {
+        $namespace_parts = explode('\\', $this->controllers_namespace);
+        $app_path = '';
+        foreach ($namespace_parts as $part) {
+            if (!empty($part) && $part != 'app') {
+                $app_path .= $part . "/";
+            }
+        }
+        $files = glob(\Yii::$app->basePath . '/' . $app_path . '*.php');
+        foreach ($files as $file) {
+            require_once($file);
+
+            $class = basename($file, '.php');
+
+            $class_full_name = $this->controllers_namespace . $class;
+
+            if (class_exists($class_full_name)) {
+                $obj = new $class_full_name($conn, new \stdClass(), false);
+                if(method_exists($obj, '_OnClose')) {
+                    $obj->_OnClose();
+                }
+            }
         }
     }
 
