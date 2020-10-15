@@ -319,6 +319,7 @@ class SocketServer implements MessageComponentInterface {
 
             $class_full_name = $this->controllers_namespace . $class;
 
+
             if (class_exists($class_full_name)) {
                 $obj = new $class_full_name($conn, new \stdClass(), false);
                 if(method_exists($obj, '_OnClose')) {
