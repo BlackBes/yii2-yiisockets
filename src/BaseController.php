@@ -12,20 +12,48 @@ use Ratchet\ConnectionInterface;
  */
 class BaseController {
 
+    /**
+     * @var ConnectionInterface Client`s connection
+     */
     public $conn;
+
+    /**
+     * @var \stdClass Raw data
+     */
     public $request;
-    public $is_server;
+
+    /**
+     * @var int Id of client, that was connected. Extracted from User identity.
+     */
+    public $client_id;
+
+    /**
+     * @var string Role or just type of client.
+     */
+    public $role;
 
     /**
      * Base constructor.
      * @param ConnectionInterface $conn connection of current client, that was connected.
      * @param \stdClass $request_data data payload that was recieved from cliemt.
-     * @param bool $is_server if connection was produced by server
      */
-    public function __construct(ConnectionInterface $conn, \stdClass $request_data, $is_server) {
+    public function __construct(ConnectionInterface $conn, \stdClass $request_data) {
+        $client_id = 0;
+        $role = 'client';
+
+        if(isset($conn->client_id)) {
+            $client_id = $conn->client_id;
+        }
+
+        if(isset($conn->role)) {
+            $role = $conn->role;
+        }
+
         $this->conn = $conn;
         $this->request = $request_data;
-        $this->is_server = $is_server;
+        $this->client_id = $client_id;
+        $this->role = $role;
+
     }
 
     /**
@@ -183,6 +211,20 @@ class BaseController {
             return $conn->client_id;
         } else {
             return false;
+        }
+    }
+
+    /**
+     * Trying to get data from request, send NULL if not found.
+     *
+     * @param string $data_name name of field, to extract from request.
+     * @return mixed
+     */
+    public function getData($data_name) {
+        if(property_exists($this->request, $data_name)) {
+            return $this->request->$data_name;
+        } else {
+            return null;
         }
     }
 }

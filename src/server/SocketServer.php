@@ -45,7 +45,7 @@ class SocketServer implements MessageComponentInterface {
     /**
      * Implementing of Ratchet`s standard onOpen function.
      *
-     * It verify client`s login credentials and establish connection, or not.
+     * It verify client`s login credentials based on custom verification function and establish connection, or not.
      *
      * @param ConnectionInterface $conn user`s connection.
      */
@@ -53,7 +53,7 @@ class SocketServer implements MessageComponentInterface {
         $this->testDBConnection();
 
         $params = $this->requestGetParameters($conn);
-        $GLOBALS['groups']['clients']->attach($conn);
+        //$GLOBALS['groups']['clients']->attach($conn);
         //echo "New connection! ({$conn->resourceId})\n";
 
         if (!empty($params['data'])) {
@@ -62,26 +62,42 @@ class SocketServer implements MessageComponentInterface {
 
             //if($login_token != 'server') {
             if (is_array($data)) {
-                $user = call_user_func($this->validation_function, $data);
+                $validation_data = call_user_func($this->validation_function, $data);
 
-                if ($user != false) {
-                    Yii::$app->user->setIdentity($user);
+                if ($validation_data != false) {
+                    if (is_array($validation_data)) {
+                        if(array_key_exists('client', $validation_data)) {
+                            $user = $validation_data['client'];
+                            Yii::$app->user->setIdentity($user);
 
-                    $conn->client_id = $user->id;
-                    $GLOBALS['groups']['clients']->attach($conn);
+                            $role = 'client';
+                            if(array_key_exists('role', $validation_data)) {
+                                $role = $validation_data['role'];
+                            }
 
-                    if (!isset($GLOBALS['groups']['_client_' . $user->id])) {
-                        $GLOBALS['groups']['_client_' . $user->id] = new \SplObjectStorage();
-                    }
-                    if (count($GLOBALS['groups']['_client_' . $user->id]) == 0) {
-                        $GLOBALS['groups']['_client_' . $user->id]->attach($conn);
+                            //Attaching new params to Conn interface. ITS NOT DEFAULT ConnectionInterface PARAMETERS!
+                            $conn->client_id = $user->id;
+                            $conn->role = $role;
 
-                        $this->callOpenCallbacks($conn);
+                            $GLOBALS['groups']['clients']->attach($conn);
+
+                            if (!isset($GLOBALS['groups']['_client_' . $user->id])) {
+                                $GLOBALS['groups']['_client_' . $user->id] = new \SplObjectStorage();
+                            }
+                            if (count($GLOBALS['groups']['_client_' . $user->id]) == 0) {
+                                $GLOBALS['groups']['_client_' . $user->id]->attach($conn);
+
+                                $this->callOpenCallbacks($conn);
+                            } else {
+                                $GLOBALS['groups']['_client_' . $user->id]->attach($conn);
+                            }
+                            $this->writeInfo("New connection! ({$conn->resourceId})");
+                        } else {
+                            trigger_error('Validation return data should contain "client" key.', E_USER_ERROR);
+                        }
                     } else {
-                        $GLOBALS['groups']['_client_' . $user->id]->attach($conn);
+                        trigger_error('Validation return data should be an array.', E_USER_ERROR);
                     }
-                    $this->writeInfo("New connection! ({$conn->resourceId})");
-
                 } else {
                     trigger_error('Wrong user login token.', E_USER_ERROR);
                 }
@@ -166,9 +182,7 @@ class SocketServer implements MessageComponentInterface {
                         $request_data = $data->data;
                     }
 
-                    $is_server = BaseController::isInGroup($from, '_servers');
-
-                    $cont = new $controller_full_path($from, $request_data, $is_server);
+                    $cont = new $controller_full_path($from, $request_data);
                     if (method_exists($cont, $a_name_string)) {
                         $cont->$a_name_string();
                     } else {
@@ -204,7 +218,7 @@ class SocketServer implements MessageComponentInterface {
         $user_id = BaseController::getClientId($conn);
 
         if (count($GLOBALS['groups']['_client_' . $user_id]) == 0) {
-            $bc = new BaseController($conn, new \stdClass(), false);
+            //$bc = new BaseController($conn, new \stdClass());
             //$bc->sendToGroupExcludeUser('im-offline', ['user_id' => $user_id]);
         }
 
@@ -288,8 +302,8 @@ class SocketServer implements MessageComponentInterface {
             $class_full_name = $this->controllers_namespace . $class;
 
             if (class_exists($class_full_name)) {
-                $obj = new $class_full_name($conn, new \stdClass(), false);
-                if(method_exists($obj, '_OnOpen')) {
+                $obj = new $class_full_name($conn, new \stdClass());
+                if (method_exists($obj, '_OnOpen')) {
                     $obj->_OnOpen();
                 }
             }
@@ -317,10 +331,9 @@ class SocketServer implements MessageComponentInterface {
 
             $class_full_name = $this->controllers_namespace . $class;
 
-
             if (class_exists($class_full_name)) {
-                $obj = new $class_full_name($conn, new \stdClass(), false);
-                if(method_exists($obj, '_OnClose')) {
+                $obj = new $class_full_name($conn, new \stdClass());
+                if (method_exists($obj, '_OnClose')) {
                     $obj->_OnClose();
                 }
             }
