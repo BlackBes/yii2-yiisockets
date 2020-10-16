@@ -51,7 +51,6 @@ class SocketServer implements MessageComponentInterface {
      */
     public function onOpen(ConnectionInterface $conn) {
         $this->testDBConnection();
-        $this->callOpenCallbacks($conn);
 
         $params = $this->requestGetParameters($conn);
         $GLOBALS['groups']['clients']->attach($conn);
@@ -77,8 +76,7 @@ class SocketServer implements MessageComponentInterface {
                     if (count($GLOBALS['groups']['_client_' . $user->id]) == 0) {
                         $GLOBALS['groups']['_client_' . $user->id]->attach($conn);
 
-                        $bc = new BaseController($conn, new \stdClass(), false);
-                        //$bc->sendToGroupExcludeUser('im-online', ['user_id' => $user->id]);
+                        $this->callOpenCallbacks($conn);
                     } else {
                         $GLOBALS['groups']['_client_' . $user->id]->attach($conn);
                     }
