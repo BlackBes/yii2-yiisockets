@@ -87,11 +87,11 @@ class SocketServer implements MessageComponentInterface {
                             if (count($GLOBALS['groups']['_client_' . $user->id]) == 0) {
                                 $GLOBALS['groups']['_client_' . $user->id]->attach($conn);
 
-                                $this->callOpenCallbacks($conn);
                             } else {
                                 $GLOBALS['groups']['_client_' . $user->id]->attach($conn);
                             }
                             $this->writeInfo("New connection! ({$conn->resourceId})");
+                            $this->callOpenCallbacks($conn);
                         } else {
                             trigger_error('Validation return data should contain "client" key.', E_USER_ERROR);
                         }
