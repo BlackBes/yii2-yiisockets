@@ -128,9 +128,9 @@ class SocketServer implements MessageComponentInterface {
     public function onMessage(ConnectionInterface $from, $msg) {
         $this->testDBConnection();
         $data = json_decode($msg); //для приема сообщений в формате json
-
+        $this->writeInfo($msg);
         if (empty($data)) {
-            $this->writeWarning("invalid data");
+            $this->writeWarning("Data payload is not valid JSON or not exist.");
             return $from->close();
         }
 

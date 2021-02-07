@@ -61,9 +61,13 @@ class BaseController {
      * @param ConnectionInterface $conn user`s connection.
      * @param string $action action name to call on client`s side.
      * @param mixed $data data payload to send.
+     * @param bool $is_json option, to send data as json string
      */
-    public function send(ConnectionInterface $conn, $action, $data) {
+    public function send(ConnectionInterface $conn, $action, $data, $is_json = false) {
         $json_data = json_encode($data, JSON_UNESCAPED_UNICODE);
+        if($is_json) {
+            $json_data = json_encode($json_data, JSON_UNESCAPED_UNICODE);
+        }
         $conn->send('{"status": "1", "action":"' . $action . '", "data": ' . $json_data . '}');
     }
 
@@ -81,13 +85,14 @@ class BaseController {
      * @param string $action action name to call on client`s side.
      * @param mixed $data data payload to send.
      * @param string $group_id (optional) id of the existing group.
+     * @param bool $is_json option, to send data as json string
      * @return bool
      */
-    public function sendToGroupExcludeClient($action, $data, $group_id = 'clients') {
+    public function sendToGroupExcludeClient($action, $data, $group_id = 'clients', $is_json = false) {
         if (array_key_exists($group_id, $GLOBALS['groups'])) {
             foreach ($GLOBALS['groups'][$group_id] as $el) {
                 if ($el != $this->conn) {
-                    $this->send($el, $action, $data);
+                    $this->send($el, $action, $data, $is_json);
                 }
             }
             return true;
@@ -101,16 +106,17 @@ class BaseController {
      * @param string $action action name to call on client`s side.
      * @param mixed $data data payload to send.
      * @param string $group_id (optional) id of the existing group.
+     * @param bool $is_json option, to send data as json string
      * @return bool
      */
-    public function sendToGroupExcludeUser($action, $data, $group_id = 'clients') {
+    public function sendToGroupExcludeUser($action, $data, $group_id = 'clients', $is_json = false) {
         $user_id = self::getClientId($this->conn);
         if (array_key_exists($group_id, $GLOBALS['groups'])) {
             foreach ($GLOBALS['groups'][$group_id] as $el) {
                 if ($el != $this->conn) {
                     $iter_user_id = self::getClientId($el);
                     if ($iter_user_id != $user_id) {
-                        $this->send($el, $action, $data);
+                        $this->send($el, $action, $data, $is_json);
                     }
                 }
             }
@@ -125,13 +131,13 @@ class BaseController {
      * @param string $action action name to call on client`s side.
      * @param mixed $data data payload to send.
      * @param string $group_id (optional) id of the existing group. Default 'clients' group will be used if nothing was provided.
+     * @param bool $is_json option, to send data as json string
      * @return bool
      */
-    public function sendToGroup($action, $data, $group_id = 'clients') {
+    public function sendToGroup($action, $data, $group_id = 'clients', $is_json = false) {
         if (array_key_exists($group_id, $GLOBALS['groups'])) {
             foreach ($GLOBALS['groups'][$group_id] as $el) {
-                $this->send($el, $action, $data);
-
+                $this->send($el, $action, $data, $is_json);
             }
             return true;
         } else {
