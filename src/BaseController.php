@@ -166,7 +166,7 @@ class BaseController {
     public function removeFromGroup(ConnectionInterface $conn, $group_id) {
         if (array_key_exists($group_id, $GLOBALS['groups'])) {
             $GLOBALS['groups'][$group_id]->detach($conn);
-            return false;
+            return true;
         } else {
             return false;
         }
