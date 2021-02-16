@@ -239,10 +239,17 @@ class SocketServer implements MessageComponentInterface {
      * @param \Exception $e exception.
      */
     public function onError(ConnectionInterface $conn, \Exception $e) {
-        $conn->send('{"status": "2", "data": {"errorText": "' . $e->getMessage() . '"}}');
-        $this->writeError($e->getMessage());
-        print_r($e->getTraceAsString());
-        $conn->close();
+        $json_data = ["errorText" => $e->getMessage()];
+        $json_data = json_encode($json_data, JSON_UNESCAPED_UNICODE);
+        $json_data = json_encode($json_data, JSON_UNESCAPED_UNICODE);
+        if($conn->send('{"status": "2", "data": '.$json_data.'}')) {
+            $this->writeError($e->getMessage());
+            print_r($e->getTraceAsString());
+
+            $this->loop->addTimer(2, function () use($conn) {
+                $conn->close();
+            });
+        }
     }
 
 
