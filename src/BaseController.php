@@ -3,6 +3,7 @@
 namespace blackbes\yiisockets;
 
 use Ratchet\ConnectionInterface;
+use React\EventLoop\LoopInterface;
 
 /**
  * This is the base controller for sockets routing system.
@@ -33,13 +34,20 @@ class BaseController {
     public $role;
 
     /**
+     * @var LoopInterface ReactPHP LoopInterface
+     */
+    public $loop;
+
+    /**
      * Base constructor.
      * @param ConnectionInterface $conn connection of current client, that was connected.
+     * @param LoopInterface $loop
      * @param \stdClass $request_data data payload that was recieved from cliemt.
      */
-    public function __construct(ConnectionInterface $conn, \stdClass $request_data) {
+    public function __construct(ConnectionInterface $conn,LoopInterface $loop, \stdClass $request_data) {
         $client_id = 0;
         $role = 'client';
+        $this->loop = $loop;
 
         if(isset($conn->client_id)) {
             $client_id = $conn->client_id;
@@ -75,9 +83,16 @@ class BaseController {
      * Throws custom error to client.
      * @param ConnectionInterface $conn user`s connection.
      * @param string $error_text error message.
+     * @param bool $is_json option, to send data as json string
      */
-    public function sendError(ConnectionInterface $conn, $error_text) {
-        $conn->send('{"status": "2", "data": {"errorText": "' . $error_text . '"}}');
+    public function sendError(ConnectionInterface $conn, $error_text, $is_json = false) {
+
+        $json_data = ["errorText" => $error_text];
+        $json_data = json_encode($json_data, JSON_UNESCAPED_UNICODE);
+        if($is_json) {
+            $json_data = json_encode($json_data, JSON_UNESCAPED_UNICODE);
+        }
+        $conn->send('{"status": "2", "data": ' . $json_data . '}');
     }
 
     /**

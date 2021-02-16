@@ -3,6 +3,7 @@
 namespace blackbes\yiisockets\server;
 
 use blackbes\yiisockets\BaseController;
+use React\EventLoop\LoopInterface;
 use Yii;
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
@@ -23,14 +24,17 @@ global $groups;
 class SocketServer implements MessageComponentInterface {
     public $controllers_namespace = "";
     public $validation_function   = [];
+    public $loop;
 
     /**
      * Server constructor.
      * @param array $validation_function Validation function credentials.
+     * @param LoopInterface $loop
      * @param string $controllers_namespace Namespace of all sockets controllers. "app\sockets\" by default.
      */
-    public function __construct($validation_function, $controllers_namespace = "app\sockets\\") {
+    public function __construct($validation_function, LoopInterface $loop, $controllers_namespace = "app\sockets\\") {
         $this->controllers_namespace = $controllers_namespace;
+        $this->loop = $loop;
         if (is_array($validation_function)) {
             $this->validation_function = $validation_function;
 
@@ -182,7 +186,7 @@ class SocketServer implements MessageComponentInterface {
                         $request_data = $data->data;
                     }
 
-                    $cont = new $controller_full_path($from, $request_data);
+                    $cont = new $controller_full_path($from, $this->loop, $request_data);
                     if (method_exists($cont, $a_name_string)) {
                         $cont->$a_name_string();
                     } else {
@@ -302,7 +306,7 @@ class SocketServer implements MessageComponentInterface {
             $class_full_name = $this->controllers_namespace . $class;
 
             if (class_exists($class_full_name)) {
-                $obj = new $class_full_name($conn, new \stdClass());
+                $obj = new $class_full_name($conn, $this->loop, new \stdClass());
                 if (method_exists($obj, '_OnOpen')) {
                     $obj->_OnOpen();
                 }
@@ -332,7 +336,7 @@ class SocketServer implements MessageComponentInterface {
             $class_full_name = $this->controllers_namespace . $class;
 
             if (class_exists($class_full_name)) {
-                $obj = new $class_full_name($conn, new \stdClass());
+                $obj = new $class_full_name($conn, $this->loop, new \stdClass());
                 if (method_exists($obj, '_OnClose')) {
                     $obj->_OnClose();
                 }
