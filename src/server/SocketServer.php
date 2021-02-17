@@ -246,7 +246,7 @@ class SocketServer implements MessageComponentInterface {
             $this->writeError($e->getMessage());
             print_r($e->getTraceAsString());
 
-            $this->loop->addTimer(2, function () use($conn) {
+            $this->loop->addTimer(3, function () use($conn) {
                 $conn->close();
             });
         }
