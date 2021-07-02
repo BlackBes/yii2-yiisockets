@@ -6,7 +6,7 @@ Installation
 ------------
 he preferred way to install this extension is through [composer](http://getcomposer.org/download/).
 
- 1) **Pull** this project in any directory. In this case it will be located in upper level folder
+ 1) **Clone** this project in any directory. In this case it will be located in upper level folder
 
 ```bash
     cd ..
