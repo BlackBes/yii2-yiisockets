@@ -140,9 +140,10 @@ Connecting to websockets on front
 
 Using websockets on front
 -----
-
-```javascript
-    let actionName = 'chat/send' // chat - controller name, send - controller's action (actionSend(){})
-    let additionalData = {'text': "some example text"} // this property you can get in controller by using $this->getData('text')
-    ws.socketSend(actionName, additionalData);
-```
+  1) Use socketSend method to make requests
+      ```javascript
+          let actionName = 'chat/send' // chat - controller name, send - controller's action (actionSend(){})
+          let additionalData = {'text': "some example text"} // this property you can get in controller by using $this->getData('text')
+          ws.socketSend(actionName, additionalData);
+      ```
+  2) Process responses in your addAction methods
