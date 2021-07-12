@@ -53,10 +53,10 @@ he preferred way to install this extension is through [composer](http://getcompo
     ]
 ```
 
-5) Add **SocketController.php** (you can find template [here]()) to your **commands** folder
+5) Add **SocketController.php** (you can find template [here](https://github.com/BlackBes/yii2-yiisockets/blob/master/templates/SocketController.php)) to your **commands** folder
 
 
-6) Add **ecosystem.config.js** (you can find template [here]()) to your project **root** directory
+6) Add **ecosystem.config.js** (you can find template [here](https://github.com/BlackBes/yii2-yiisockets/blob/master/templates/ecosystem.config.js)) to your project **root** directory
 
 
 7) Install [**npm**](https://linuxize.com/post/how-to-install-node-js-on-ubuntu-18.04/)
@@ -101,7 +101,7 @@ Extending this controller will provide following methods that you can use in you
 Connecting to websockets on front
 -----
 
-1) Add [**Yii2WebSockets**]() file to your JavaScript project and import it
+1) Add [**Yii2WebSockets**](https://github.com/BlackBes/yii2-yiisockets/blob/master/templates/yiisockets-core.js) file to your JavaScript project and import it
 
    ```javascript
       import Yii2WebSockets from "path/to/yiisockets-core";
