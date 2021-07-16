@@ -252,7 +252,6 @@ class SocketServer implements MessageComponentInterface {
         }
     }
 
-
     /**
      * This function taking query of uri and breaks stringified get parameters into a key=>value array.
      *
