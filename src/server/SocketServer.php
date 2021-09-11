@@ -103,7 +103,8 @@ class SocketServer implements MessageComponentInterface {
                         trigger_error('Validation return data should be an array.', E_USER_ERROR);
                     }
                 } else {
-                    trigger_error('Wrong user login token.', E_USER_ERROR);
+                    $this->writeError("Wrong user login token in connection {$conn->resourceId}.");
+                    $this->sendError($conn, 'Wrong user login token.');
                 }
             } else {
                 trigger_error('Data should be a valid JSON.', E_USER_ERROR);
@@ -211,22 +212,33 @@ class SocketServer implements MessageComponentInterface {
      * @param ConnectionInterface $conn user`s connection.
      */
     public function onClose(ConnectionInterface $conn) {
+        $this->removeConnectionFromGroups($conn);
+        //$user_id = BaseController::getClientId($conn);
+
+        //if (count($GLOBALS['groups']['_client_' . $user_id]) == 0) {
+            //$bc = new BaseController($conn, new \stdClass());
+            //$bc->sendToGroupExcludeUser('im-offline', ['user_id' => $user_id]);
+        //}
+
+        $this->writeInfo("Connection {$conn->resourceId} has disconnected");
+    }
+
+    /**
+     * Removing selected connection from all groups, that exist on server
+     *
+     * @param ConnectionInterface $conn user`s connection.
+     */
+    public function removeConnectionFromGroups($conn) {
         $this->callCloseCallbacks($conn);
-        foreach ($GLOBALS['groups'] as $group) {
+        foreach ($GLOBALS['groups'] as $key => $group) {
             foreach ($group as $client) {
                 if ($client == $conn) {
+                    $this->writeInfo("Detaching user from group {$key}!");
                     $group->detach($client);
                 }
             }
         }
-        $user_id = BaseController::getClientId($conn);
-
-        if (count($GLOBALS['groups']['_client_' . $user_id]) == 0) {
-            //$bc = new BaseController($conn, new \stdClass());
-            //$bc->sendToGroupExcludeUser('im-offline', ['user_id' => $user_id]);
-        }
-
-        $this->writeInfo("Connection {$conn->resourceId} has disconnected");
+        $this->writeInfo("All groups cleared from {$conn->resourceId} connection!");
     }
 
     /**
@@ -239,17 +251,31 @@ class SocketServer implements MessageComponentInterface {
      * @param \Exception $e exception.
      */
     public function onError(ConnectionInterface $conn, \Exception $e) {
-        $json_data = ["errorText" => $e->getMessage()];
-        $json_data = json_encode($json_data, JSON_UNESCAPED_UNICODE);
-        $json_data = json_encode($json_data, JSON_UNESCAPED_UNICODE);
-        if($conn->send('{"status": "2", "data": '.$json_data.'}')) {
+        if($this->sendError($conn, $e->getMessage())) {
             $this->writeError($e->getMessage());
             print_r($e->getTraceAsString());
+            $this->removeConnectionFromGroups($conn);
 
-            $this->loop->addTimer(3, function () use($conn) {
+            $this->loop->addTimer(0, function () use($conn) {
                 $conn->close();
             });
         }
+    }
+
+    /**
+     * Just sending error to client.
+     *
+     * @param ConnectionInterface $conn user`s connection.
+     * @param string $text Error text
+     */
+    public function sendError(ConnectionInterface $conn, $text) {
+        $json_data = ["errorText" => $text];
+        $json_data = json_encode($json_data, JSON_UNESCAPED_UNICODE);
+        $json_data = json_encode($json_data, JSON_UNESCAPED_UNICODE);
+        if($conn->send('{"status": "2", "data": '.$json_data.'}')) {
+            return true;
+        }
+        return false;
     }
 
     /**
